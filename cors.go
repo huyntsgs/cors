@@ -53,6 +53,9 @@ type Config struct {
 
 	// Allows usage of file:// schema (dangerous!) use it only when you 100% sure it's needed
 	AllowFiles bool
+
+	// Allows url containing keyword without validation
+	AllowURLKeywords []string
 }
 
 // AddAllowMethods is allowed to add custom methods

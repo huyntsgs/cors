@@ -1,6 +1,7 @@
 package cors
 
 import (
+	"log"
 	"net/http"
 	"strings"
 
@@ -16,6 +17,7 @@ type cors struct {
 	normalHeaders    http.Header
 	preflightHeaders http.Header
 	wildcardOrigins  [][]string
+	allowURLKeywords []string
 }
 
 var (
@@ -47,6 +49,7 @@ func newCors(config Config) *cors {
 		allowOriginFunc:  config.AllowOriginFunc,
 		allowAllOrigins:  config.AllowAllOrigins,
 		allowCredentials: config.AllowCredentials,
+		allowURLKeywords: config.AllowURLKeywords,
 		allowOrigins:     normalize(config.AllowOrigins),
 		normalHeaders:    generateNormalHeaders(config),
 		preflightHeaders: generatePreflightHeaders(config),
@@ -68,9 +71,19 @@ func (cors *cors) applyCors(c *gin.Context) {
 		return
 	}
 
-	if !cors.validateOrigin(origin) {
-		c.AbortWithStatus(http.StatusForbidden)
-		return
+	havingKeyword := false
+	for _, keyword := range cors.allowURLKeywords {
+		if strings.Contains(c.Request.URL.String(), keyword) {
+			log.Println("having keyword", keyword)
+			havingKeyword = true
+		}
+	}
+	if !havingKeyword {
+		log.Println("Not having keyword")
+		if !cors.validateOrigin(origin) {
+			c.AbortWithStatus(http.StatusForbidden)
+			return
+		}
 	}
 
 	if c.Request.Method == "OPTIONS" {
