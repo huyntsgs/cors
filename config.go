@@ -1,7 +1,7 @@
 package cors
 
 import (
-	"log"
+	//"log"
 	"net/http"
 	"strings"
 
@@ -58,11 +58,21 @@ func newCors(config Config) *cors {
 }
 
 func (cors *cors) applyCors(c *gin.Context) {
-	origin := c.Request.Header.Get("Origin")
-	if len(origin) == 0 {
-		// request is not a CORS request
-		return
+	havingKeyword := false
+	for _, keyword := range cors.allowURLKeywords {
+		if strings.Contains(c.Request.URL.String(), keyword) {
+			havingKeyword = true
+			break
+		}
 	}
+
+	origin := c.Request.Header.Get("Origin")
+	if len(origin) == 0 && !havingKeyword {
+		c.AbortWithStatus(http.StatusBadRequest)
+		return
+
+	}
+
 	host := c.Request.Host
 
 	if origin == "http://"+host || origin == "https://"+host {
@@ -71,21 +81,12 @@ func (cors *cors) applyCors(c *gin.Context) {
 		return
 	}
 
-	havingKeyword := false
-	for _, keyword := range cors.allowURLKeywords {
-		if strings.Contains(c.Request.URL.String(), keyword) {
-			log.Println("having keyword", keyword)
-			havingKeyword = true
-		}
-	}
 	if !havingKeyword {
-		log.Println("Not having keyword")
 		if !cors.validateOrigin(origin) {
 			c.AbortWithStatus(http.StatusForbidden)
 			return
 		}
 	}
-
 	if c.Request.Method == "OPTIONS" {
 		cors.handlePreflight(c)
 		defer c.AbortWithStatus(http.StatusNoContent) // Using 204 is better than 200 when the request status is OPTIONS
